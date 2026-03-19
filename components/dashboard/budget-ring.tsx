@@ -76,7 +76,7 @@ export function BudgetRing({ budget, spent, remaining }: BudgetRingProps) {
             cx={size / 2}
             cy={size / 2}
             r={radius - strokeWidth / 2}
-            fill="color-mix(in oklab, var(--destructive) 20%, transparent)"
+            fill="color-mix(in oklab, var(--destructive) 5%, transparent)"
           />
         )}
         

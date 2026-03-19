@@ -159,15 +159,15 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 }}
               >
                 {/* Time */}
-                <div className="w-12 shrink-0 text-center">
-                  <span className="text-xs text-muted-foreground">
+                <div className="w-14 shrink-0 text-center">
+                  <span className="text-sm text-muted-foreground">
                     {format(new Date(transaction.created_at), 'h:mm a')}
                   </span>
                 </div>
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-foreground font-medium truncate">
+                  <p className="text-xl font-semibold text-foreground truncate">
                     {transaction.name || transaction.category?.name || 'Expense'}
                   </p>
                   {transaction.name && transaction.category && (

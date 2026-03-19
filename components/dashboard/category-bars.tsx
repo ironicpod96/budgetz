@@ -15,9 +15,10 @@ interface CategoryWithSpending extends BudgetCategory {
 interface CategoryBarsProps {
   categories: CategoryWithSpending[]
   isExpanded: boolean
+  acknowledged?: boolean
 }
 
-export function CategoryBars({ categories, isExpanded }: CategoryBarsProps) {
+export function CategoryBars({ categories, isExpanded, acknowledged = false }: CategoryBarsProps) {
   if (categories.length === 0) {
     return (
       <p className="text-center text-muted-foreground py-4">
@@ -34,9 +35,9 @@ export function CategoryBars({ categories, isExpanded }: CategoryBarsProps) {
   return (
     <div className="space-y-3">
       {isExpanded && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-3">
           {displayCategories.map(category => (
-            <CategoryRow key={category.id} category={category} />
+            <CategoryRow key={category.id} category={category} acknowledged={acknowledged} />
           ))}
         </div>
       )}
@@ -44,7 +45,26 @@ export function CategoryBars({ categories, isExpanded }: CategoryBarsProps) {
   )
 }
 
-function CategoryRow({ category }: { category: CategoryWithSpending }) {
+export function getBarColor(percentage: number): string {
+  const spentRatio = Math.min(Math.max(percentage, 0) / 100, 1)
+  const isOverBudget = percentage > 100
+  if (isOverBudget) return 'var(--destructive)'
+  const colorRatio = Math.min(spentRatio, 1)
+  if (colorRatio <= 0.35) return 'var(--category-ring-base)'
+  if (colorRatio <= 0.5) {
+    const normalized = (colorRatio - 0.35) / (0.5 - 0.35)
+    const orangeMix = normalized * 100
+    return `color-mix(in oklab, var(--category-ring-base) ${100 - orangeMix}%, var(--chart-4) ${orangeMix}%)`
+  }
+  if (colorRatio <= 0.6) return 'var(--chart-4)'
+  if (colorRatio <= 0.75) {
+    const redMix = ((colorRatio - 0.6) / (0.75 - 0.6)) * 100
+    return `color-mix(in oklab, var(--chart-4) ${100 - redMix}%, var(--destructive) ${redMix}%)`
+  }
+  return 'var(--destructive)'
+}
+
+function CategoryRow({ category, acknowledged }: { category: CategoryWithSpending; acknowledged: boolean }) {
   const spentRatio = Math.min(Math.max(category.percentage, 0) / 100, 1)
   const isOverBudget = category.percentage > 100
   const overAmount = category.spent - Number(category.periodBudget)
@@ -52,40 +72,23 @@ function CategoryRow({ category }: { category: CategoryWithSpending }) {
   // Bar shows remaining — starts full, depletes as spending increases
   const remainingPercent = isOverBudget ? 100 : Math.max(100 - category.percentage, 2)
 
-  // Color follows the spent ratio: grey → orange → red as it depletes
-  let barColor: string
-  if (isOverBudget) {
-    barColor = 'var(--destructive)'
-  } else {
-    const colorRatio = Math.min(spentRatio, 1)
-    if (colorRatio <= 0.35) {
-      barColor = 'var(--category-ring-base)'
-    } else if (colorRatio <= 0.5) {
-      const normalized = (colorRatio - 0.35) / (0.5 - 0.35)
-      const orangeMix = normalized * 100
-      barColor = `color-mix(in oklab, var(--category-ring-base) ${100 - orangeMix}%, var(--chart-4) ${orangeMix}%)`
-    } else if (colorRatio <= 0.6) {
-      barColor = 'var(--chart-4)'
-    } else if (colorRatio <= 0.75) {
-      const redMix = ((colorRatio - 0.6) / (0.75 - 0.6)) * 100
-      barColor = `color-mix(in oklab, var(--chart-4) ${100 - redMix}%, var(--destructive) ${redMix}%)`
-    } else {
-      barColor = 'var(--destructive)'
-    }
-  }
+  const barColor = getBarColor(category.percentage)
+  const dimmed = acknowledged && isOverBudget
 
   return (
-    <div className="flex items-center gap-3 justify-start">
+    <>
       {/* Icon + Name */}
       <CategoryLabel
         name={category.name}
         icon={category.icon}
-        size="sm"
-        className="w-20 shrink-0"
+        size="md"
+        textClassName="font-semibold"
+        noTruncate
+        className={dimmed ? 'opacity-50' : ''}
       />
 
       {/* Progress Bar — depletes from right to left as budget is spent */}
-      <div className="w-[164px] h-2.5 bg-secondary rounded-full overflow-hidden shrink-0">
+      <div className={`h-2.5 bg-secondary rounded-full overflow-hidden ${dimmed ? 'opacity-50' : ''}`}>
         <div
           className="h-full rounded-full transition-all duration-300"
           style={{
@@ -97,11 +100,11 @@ function CategoryRow({ category }: { category: CategoryWithSpending }) {
 
       {/* Category remaining/over budget value */}
       <span 
-        className="text-base font-semibold whitespace-nowrap shrink-0"
+        className={`text-base font-semibold whitespace-nowrap w-[48px] text-right ${dimmed ? 'opacity-50' : ''}`}
         style={{ color: barColor }}
       >
         {isOverBudget && '+'}<Rm amount={isOverBudget ? overAmount : category.remaining} rmClassName="text-current" valueClassName="text-current" />
       </span>
-    </div>
+    </>
   )
 }

@@ -13,6 +13,7 @@ interface CategoryLabelProps {
   iconClassName?: string
   colorClassName?: string
   size?: CategoryLabelSize
+  noTruncate?: boolean
 }
 
 const sizeStyles: Record<CategoryLabelSize, { icon: number; text: string; gap: string }> = {
@@ -29,6 +30,7 @@ export function CategoryLabel({
   iconClassName,
   colorClassName = 'text-muted-foreground',
   size = 'sm',
+  noTruncate = false,
 }: CategoryLabelProps) {
   const styles = sizeStyles[size]
 
@@ -40,7 +42,7 @@ export function CategoryLabel({
         size={styles.icon}
         className={cn('shrink-0', iconClassName)}
       />
-      <span className={cn('truncate', styles.text, textClassName)}>{name}</span>
+      <span className={cn(noTruncate ? 'whitespace-nowrap' : 'truncate', styles.text, textClassName)}>{name}</span>
     </div>
   )
 }

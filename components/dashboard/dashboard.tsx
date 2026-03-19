@@ -6,11 +6,13 @@ import { BudgetRing } from './budget-ring'
 import { CategoryBars } from './category-bars'
 import { TransactionList } from './transaction-list'
 import { AddExpenseModal } from './add-expense-modal'
+import { BorrowSheet } from './borrow-sheet'
+import { OverBudgetAlerts } from './over-budget-alerts'
 import { SettingsSheet } from './settings-sheet'
 import { formatCurrency } from '@/lib/types'
 import { textSemantics } from '@/components/ui/typography'
 import { cn } from '@/lib/utils'
-import { CircleDollarSign, Plus, ChevronDown } from 'lucide-react'
+import { Plus, ChevronDown } from 'lucide-react'
 import { format, isToday, isThisWeek, startOfWeek, startOfMonth, differenceInCalendarDays } from 'date-fns'
 import type { Transaction } from '@/lib/types'
 
@@ -29,6 +31,8 @@ export function Dashboard() {
   const { profile, categories, transactions, fixedExpenses, isLoading } = useBudget()
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showBorrowSheet, setShowBorrowSheet] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
   const [showCategories, setShowCategories] = useState(false)
 
@@ -38,11 +42,12 @@ export function Dashboard() {
   const dayOfWeek = today.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
   const daysRemainingInWeek = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
 
-  // Date label: "Mar 19, Thu" for day view; "16 – 19 Mar" for week view
+  // Date label split: line 1 = "Mar 19" or "16 – 19 Mar", line 2 = "Thu"
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
-  const formattedDate = viewMode === 'week'
+  const dateLine1 = viewMode === 'week'
     ? `${format(weekStart, 'd')} – ${format(today, 'd MMM')}`
-    : format(today, 'MMM d, EEE')
+    : format(today, 'MMM d')
+  const dateLine2 = format(today, 'EEE')
 
   // Calculate daily/weekly budget and spending
   // "Jar system" — leftover from previous days redistributes into remaining days
@@ -156,6 +161,21 @@ export function Dashboard() {
   const currentRemaining = viewMode === 'day' ? budgetData.todayRemainingRaw : budgetData.weekRemainingRaw
   const displayTransactions = viewMode === 'day' ? budgetData.todayTransactions : budgetData.weekTransactions
 
+  // Over-budget categories (red territory) for borrow CTA
+  const overBudgetCategories = useMemo(
+    () => categorySpending.filter(c => c.periodBudget > 0 && c.percentage > 100),
+    [categorySpending]
+  )
+  const hasOverBudget = overBudgetCategories.length > 0
+
+  // Last transaction for undo
+  const lastTransaction = displayTransactions.length > 0 ? displayTransactions[0] : null
+
+  // Compute daily reduction for the badge
+  const futureDays = Math.max(budgetData.remainingDaysInMonth - 1, 1)
+  const adjustedDaily = Math.max(0, (budgetData.totalMonthlyBudget - budgetData.spentBeforeToday - budgetData.todaySpent) / futureDays)
+  const dailyReduction = Math.max(0, budgetData.dailyBudgetRaw - adjustedDaily)
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -202,28 +222,39 @@ export function Dashboard() {
           onClick={() => setShowSettings(true)}
           className="p-2 text-muted-foreground hover:text-foreground transition-colors"
         >
-          <CircleDollarSign className="h-6 w-6" />
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 29.3334C23.3638 29.3334 29.3333 23.3638 29.3333 16C29.3333 8.63622 23.3638 2.66669 16 2.66669C8.63621 2.66669 2.66667 8.63622 2.66667 16C2.66667 23.3638 8.63621 29.3334 16 29.3334Z" stroke="currentColor" strokeWidth="2"/>
+            <path d="M16 8V24M20 12.6667C20 10.8267 18.2093 9.33333 16 9.33333C13.7907 9.33333 12 10.8267 12 12.6667C12 14.5067 13.7907 16 16 16C18.2093 16 20 17.4933 20 19.3333C20 21.1733 18.2093 22.6667 16 22.6667C13.7907 22.6667 12 21.1733 12 19.3333" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
         </button>
       </header>
 
       {/* Main Card */}
-      <div className="mx-6 bg-card rounded-3xl p-6 border border-border">
-        {/* Date */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-xl font-semibold text-foreground">{formattedDate}</p>
-          <button
-            onClick={() => setShowCategories(prev => !prev)}
-            className={`h-8 w-8 flex items-center justify-center transition-colors ${
-              showCategories ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-            aria-label={showCategories ? 'Collapse categories' : 'Expand categories'}
-          >
-            <ChevronDown className={`h-8 w-8 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${showCategories ? 'rotate-180' : 'rotate-0'}`} />
-          </button>
+      <div className="mx-6 bg-card rounded-3xl p-6 border border-border relative">
+        {/* Date — absolute top-left */}
+        <div className="absolute left-6 top-[22px]">
+          <p className="text-xl font-semibold text-foreground leading-tight">{dateLine1}</p>
+          <p className="text-xl text-muted-foreground leading-tight">{dateLine2}</p>
+          {acknowledged && hasOverBudget && dailyReduction > 0.5 && (
+            <p className="text-sm text-muted-foreground mt-1 tabular-nums">
+              −RM {Math.round(dailyReduction)}/day
+            </p>
+          )}
         </div>
 
+        {/* Expand button — absolute top-right */}
+        <button
+          onClick={() => setShowCategories(prev => !prev)}
+          className={`absolute right-6 top-[22px] h-8 w-8 flex items-center justify-center transition-colors ${
+            showCategories ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+          aria-label={showCategories ? 'Collapse categories' : 'Expand categories'}
+        >
+          <ChevronDown className={`h-8 w-8 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${showCategories ? 'rotate-180' : 'rotate-0'}`} />
+        </button>
+
         {/* Budget Ring */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-8 mt-4">
           <BudgetRing
             budget={currentBudget}
             spent={currentSpent}
@@ -231,8 +262,21 @@ export function Dashboard() {
           />
         </div>
 
+        {/* Over-budget alerts — absolute bottom-left */}
+        <OverBudgetAlerts categories={categorySpending} isExpanded={showCategories} acknowledged={acknowledged} />
+
+        {/* Borrow CTA — absolute bottom-right, only when over-budget and not acknowledged */}
+        {hasOverBudget && !acknowledged && !showCategories && (
+          <button
+            onClick={() => setShowBorrowSheet(true)}
+            className="absolute right-6 bottom-[22px] h-10 px-4 bg-destructive/10 text-destructive text-sm font-semibold rounded-full transition-all hover:bg-destructive/20 animate-in fade-in-0 duration-300"
+          >
+            Balance it
+          </button>
+        )}
+
         {/* Category Bars */}
-        <CategoryBars categories={categorySpending} isExpanded={showCategories} />
+        <CategoryBars categories={categorySpending} isExpanded={showCategories} acknowledged={acknowledged} />
       </div>
 
       {/* Transactions Section */}
@@ -257,6 +301,19 @@ export function Dashboard() {
         open={showAddExpense}
         onClose={() => setShowAddExpense(false)}
         categories={categories}
+      />
+
+      <BorrowSheet
+        open={showBorrowSheet}
+        onClose={() => setShowBorrowSheet(false)}
+        onAcknowledge={() => setAcknowledged(true)}
+        overCategories={overBudgetCategories}
+        currentDailyBudget={budgetData.dailyBudgetRaw}
+        remainingDaysInMonth={budgetData.remainingDaysInMonth}
+        totalMonthlyBudget={budgetData.totalMonthlyBudget}
+        spentBeforeToday={budgetData.spentBeforeToday}
+        todaySpent={budgetData.todaySpent}
+        lastTransaction={lastTransaction}
       />
     </div>
   )
