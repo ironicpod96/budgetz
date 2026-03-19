@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { calculateTakeHome, formatCurrencyFull } from '@/lib/types'
-import { Rm } from '@/components/ui/currency'
 import { ChevronRight } from 'lucide-react'
 
 interface SalaryStepProps {
@@ -86,25 +86,30 @@ export function SalaryStep({ onNext, initialGross, initialEpfRate }: SalaryStepP
 
         {/* Deductions Breakdown */}
         {deductions && (
-          <div className="bg-card rounded-2xl p-5 border border-border">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            className="bg-card rounded-2xl p-5 border border-border"
+          >
             <h3 className="text-sm text-muted-foreground mb-4">Monthly Deductions</h3>
             
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">EPF ({epfRate}%)</span>
-                <span className="text-foreground">- <Rm amount={deductions.epf} decimals /></span>
+                <span className="text-foreground">- {formatCurrencyFull(deductions.epf)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">SOCSO</span>
-                <span className="text-foreground">- <Rm amount={deductions.socso} decimals /></span>
+                <span className="text-foreground">- {formatCurrencyFull(deductions.socso)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">EIS</span>
-                <span className="text-foreground">- <Rm amount={deductions.eis} decimals /></span>
+                <span className="text-foreground">- {formatCurrencyFull(deductions.eis)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">PCB (Est. Tax)</span>
-                <span className="text-foreground">- <Rm amount={deductions.pcb} decimals /></span>
+                <span className="text-foreground">- {formatCurrencyFull(deductions.pcb)}</span>
               </div>
             </div>
 
@@ -112,11 +117,11 @@ export function SalaryStep({ onNext, initialGross, initialEpfRate }: SalaryStepP
               <div className="flex justify-between items-center">
                 <span className="text-foreground font-medium">Take-Home Salary</span>
                 <span className="text-2xl font-bold text-primary">
-                  <Rm amount={deductions.takeHome} decimals />
+                  {formatCurrencyFull(deductions.takeHome)}
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 

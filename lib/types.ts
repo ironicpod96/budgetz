@@ -6,7 +6,6 @@ export interface Profile {
   eis_amount: number
   pcb_amount: number
   take_home_salary: number | null
-  savings_target_rate: number | null
   onboarding_completed: boolean
   created_at: string
   updated_at: string
@@ -64,7 +63,7 @@ export const DEFAULT_CATEGORIES = [
   { name: 'Personal', icon: 'user', color: '#5E5CE6' },
   { name: 'Health', icon: 'heart', color: '#FF2D55' },
   { name: 'Shopping', icon: 'shopping-bag', color: '#BF5AF2' },
-  { name: 'Fun', icon: 'film', color: '#64D2FF' },
+  { name: 'Entertainment', icon: 'film', color: '#64D2FF' },
   { name: 'Bills', icon: 'file-text', color: '#FFD60A' },
 ]
 
@@ -90,31 +89,18 @@ export function calculateEIS(grossIncome: number): number {
 }
 
 export function calculatePCB(grossIncome: number, epf: number): number {
-  // PCB calculation based on progressive tax table
+  // Simplified PCB calculation (Monthly Tax Deduction)
   const annualIncome = grossIncome * 12
-  const taxableIncome = Math.max(annualIncome - 9000, 0)
+  const annualEPF = epf * 12
+  const taxableIncome = annualIncome - annualEPF - 9000 // Basic relief
 
-  const taxBrackets = [
-    { upperLimit: 5000, firstAmount: 0, baseTax: 0, nextRate: 0 },
-    { upperLimit: 20000, firstAmount: 5000, baseTax: 0, nextRate: 0.01 },
-    { upperLimit: 35000, firstAmount: 20000, baseTax: 150, nextRate: 0.03 },
-    { upperLimit: 50000, firstAmount: 35000, baseTax: 600, nextRate: 0.06 },
-    { upperLimit: 70000, firstAmount: 50000, baseTax: 1500, nextRate: 0.11 },
-    { upperLimit: 100000, firstAmount: 70000, baseTax: 3700, nextRate: 0.19 },
-    { upperLimit: 400000, firstAmount: 100000, baseTax: 9400, nextRate: 0.25 },
-    { upperLimit: 600000, firstAmount: 400000, baseTax: 84400, nextRate: 0.26 },
-    { upperLimit: 2000000, firstAmount: 600000, baseTax: 136400, nextRate: 0.28 },
-  ]
-
-  for (const bracket of taxBrackets) {
-    if (taxableIncome <= bracket.upperLimit) {
-      const annualTax = bracket.baseTax + (taxableIncome - bracket.firstAmount) * bracket.nextRate
-      return annualTax / 12
-    }
-  }
-
-  const annualTax = 528400 + (taxableIncome - 2000000) * 0.3
-  return annualTax / 12
+  if (taxableIncome <= 5000) return 0
+  if (taxableIncome <= 20000) return ((taxableIncome - 5000) * 0.01) / 12
+  if (taxableIncome <= 35000) return (150 + (taxableIncome - 20000) * 0.03) / 12
+  if (taxableIncome <= 50000) return (600 + (taxableIncome - 35000) * 0.06) / 12
+  if (taxableIncome <= 70000) return (1500 + (taxableIncome - 50000) * 0.11) / 12
+  if (taxableIncome <= 100000) return (3700 + (taxableIncome - 70000) * 0.19) / 12
+  return (9400 + (taxableIncome - 100000) * 0.25) / 12
 }
 
 export function calculateTakeHome(
@@ -143,9 +129,9 @@ export function calculateTakeHome(
 }
 
 export function formatCurrency(amount: number): string {
-  return `RM ${Math.abs(amount).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  return `RM${amount.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
 export function formatCurrencyFull(amount: number): string {
-  return `RM ${Math.abs(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `RM${amount.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }

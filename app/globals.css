@@ -7,11 +7,11 @@
   /* Apple-style dark theme based on screenshot */
   --background: #000000;
   --foreground: #FFFFFF;
-  --card: #1A1918;
+  --card: #1C1C1E;
   --card-foreground: #FFFFFF;
   --popover: #1C1C1E;
   --popover-foreground: #FFFFFF;
-  --primary: #FFFFFF;
+  --primary: #32D74B;
   --primary-foreground: #000000;
   --secondary: #2C2C2E;
   --secondary-foreground: #FFFFFF;
@@ -23,24 +23,23 @@
   --destructive-foreground: #FFFFFF;
   --border: #3A3A3C;
   --input: #2C2C2E;
-  --ring: #FFFFFF;
-  --chart-1: #FFFFFF;
+  --ring: #32D74B;
+  --chart-1: #32D74B;
   --chart-2: #FF3B30;
   --chart-3: #5E5CE6;
   --chart-4: #FF9F0A;
   --chart-5: #BF5AF2;
-  --category-ring-base: #636366;
   --radius: 1rem;
 }
 
 .dark {
   --background: #000000;
   --foreground: #FFFFFF;
-  --card: #1A1918;
+  --card: #1C1C1E;
   --card-foreground: #FFFFFF;
   --popover: #1C1C1E;
   --popover-foreground: #FFFFFF;
-  --primary: #FFFFFF;
+  --primary: #32D74B;
   --primary-foreground: #000000;
   --secondary: #2C2C2E;
   --secondary-foreground: #FFFFFF;
@@ -52,13 +51,12 @@
   --destructive-foreground: #FFFFFF;
   --border: #3A3A3C;
   --input: #2C2C2E;
-  --ring: #FFFFFF;
-  --chart-1: #FFFFFF;
+  --ring: #32D74B;
+  --chart-1: #32D74B;
   --chart-2: #FF3B30;
   --chart-3: #5E5CE6;
   --chart-4: #FF9F0A;
   --chart-5: #BF5AF2;
-  --category-ring-base: #636366;
 }
 
 @theme inline {
@@ -88,7 +86,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-category-ring-base: var(--category-ring-base);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -137,19 +134,4 @@ input[type="number"]::-webkit-outer-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  button:not(:disabled),
-  a,
-  [role='button'],
-  [data-slot='select-trigger'],
-  [data-slot='dialog-close'],
-  [data-slot='context-menu-item'] {
-    cursor: pointer;
-  }
-
-  [data-slot='context-menu-trigger'] {
-    cursor: context-menu;
-  }
 }

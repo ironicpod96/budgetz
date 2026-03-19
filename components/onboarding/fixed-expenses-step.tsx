@@ -1,12 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { SavingsTargetControl } from '@/components/savings-target-control'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { formatCurrency } from '@/lib/types'
-import { Rm } from '@/components/ui/currency'
 import { ChevronLeft, Plus, X, Check } from 'lucide-react'
 
 interface FixedExpense {
@@ -15,10 +12,7 @@ interface FixedExpense {
 }
 
 interface FixedExpensesStepProps {
-  takeHome: number
-  initialExpenses: FixedExpense[]
-  initialSavingsRate: number
-  onNext: (expenses: FixedExpense[], savingsRate: number) => void
+  onNext: (expenses: FixedExpense[]) => void
   onBack: () => void
   isSubmitting: boolean
 }
@@ -34,22 +28,13 @@ const COMMON_EXPENSES = [
   'Subscriptions',
 ]
 
-export function FixedExpensesStep({
-  takeHome,
-  initialExpenses,
-  initialSavingsRate,
-  onNext,
-  onBack,
-  isSubmitting,
-}: FixedExpensesStepProps) {
-  const [expenses, setExpenses] = useState<FixedExpense[]>(initialExpenses)
-  const [savingsRate, setSavingsRate] = useState<number>(initialSavingsRate)
+export function FixedExpensesStep({ onNext, onBack, isSubmitting }: FixedExpensesStepProps) {
+  const [expenses, setExpenses] = useState<FixedExpense[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [newName, setNewName] = useState('')
   const [newAmount, setNewAmount] = useState('')
 
   const totalFixed = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const savingsTargetAmount = (takeHome * savingsRate) / 100
 
   const addExpense = (name?: string) => {
     const expenseName = name || newName.trim()
@@ -106,47 +91,60 @@ export function FixedExpensesStep({
         </div>
 
         {/* Added Expenses */}
-        {expenses.map((expense, index) => (
-          <div
-            key={`${expense.name}-${index}`}
-            className="bg-card rounded-xl p-4 border border-border flex items-center justify-between mb-3"
-          >
-            <span className="text-foreground font-medium">{expense.name}</span>
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground"><Rm amount={expense.amount} /></span>
-              <button
-                onClick={() => removeExpense(index)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+        <AnimatePresence mode="popLayout">
+          {expenses.map((expense, index) => (
+            <motion.div
+              key={`${expense.name}-${index}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="bg-card rounded-xl p-4 border border-border flex items-center justify-between mb-3"
+            >
+              <span className="text-foreground font-medium">{expense.name}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground">{formatCurrency(expense.amount)}</span>
+                <button
+                  onClick={() => removeExpense(index)}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
 
         {/* Add Form */}
-        {showAddForm ? (
-          <div className="bg-card rounded-xl p-4 border border-primary mb-3">
+        <AnimatePresence>
+          {showAddForm ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="bg-card rounded-xl p-4 border border-primary mb-3"
+            >
               <div className="flex gap-3 mb-3">
-                <Input
+                <input
                   type="text"
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   placeholder="Expense name"
-                  className="flex-1"
+                  className="flex-1 bg-secondary text-foreground rounded-lg px-3 py-2 border-0 focus:ring-1 focus:ring-primary outline-none"
                 />
-                <InputGroup className="w-28">
-                  <InputGroupAddon>
-                    <InputGroupText>RM</InputGroupText>
-                  </InputGroupAddon>
-                  <InputGroupInput
+                <div className="relative w-28">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    RM
+                  </span>
+                  <input
                     type="number"
                     value={newAmount}
                     onChange={e => setNewAmount(e.target.value)}
                     placeholder="0"
-                    className="text-right font-medium"
+                    className="w-full bg-secondary text-foreground text-right font-medium rounded-lg px-3 py-2 pl-10 border-0 focus:ring-1 focus:ring-primary outline-none"
                   />
-                </InputGroup>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -168,48 +166,38 @@ export function FixedExpensesStep({
                   Add
                 </Button>
               </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="w-full py-4 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
-            Add custom expense
-          </button>
-        )}
+            </motion.div>
+          ) : (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onClick={() => setShowAddForm(true)}
+              className="w-full py-4 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus className="h-5 w-5" />
+              Add custom expense
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Total */}
-        {(expenses.length > 0 || takeHome > 0) && (
-          <div className="mt-6 bg-card rounded-2xl p-4 border border-border">
-            <div className="space-y-4">
-              <div>
-                <p className="text-foreground font-medium">Savings target</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Set aside a simple target before budget suggestions.
-                </p>
-              </div>
-
-              <SavingsTargetControl
-                savingsRate={savingsRate}
-                takeHome={takeHome}
-                onChange={setSavingsRate}
-              />
-
-              <div className="flex justify-between items-center pt-2 border-t border-border">
-                <span className="text-muted-foreground">Total Fixed Commitments</span>
-                <span className="text-xl font-bold text-foreground">
-                  <Rm amount={totalFixed + savingsTargetAmount} />
-                </span>
-              </div>
+        {expenses.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-6 bg-card rounded-2xl p-4 border border-border"
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Total Fixed Expenses</span>
+              <span className="text-xl font-bold text-foreground">{formatCurrency(totalFixed)}</span>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Complete Button */}
       <Button
-        onClick={() => onNext(expenses, savingsRate)}
+        onClick={() => onNext(expenses)}
         disabled={isSubmitting}
         className="w-full h-14 text-lg font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all duration-200 mt-6"
       >
@@ -217,7 +205,7 @@ export function FixedExpensesStep({
           'Setting up...'
         ) : (
           <>
-            Continue to Budget Allocation
+            Complete Setup
             <Check className="ml-2 h-5 w-5" />
           </>
         )}

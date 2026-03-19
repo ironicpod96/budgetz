@@ -1,2 +1,0 @@
-ALTER TABLE profiles
-ADD COLUMN IF NOT EXISTS savings_target_rate DECIMAL(5,2) DEFAULT 20.00;

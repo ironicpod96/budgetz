@@ -1,50 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { SalaryStep } from './salary-step'
 import { BudgetStep } from './budget-step'
 import { FixedExpensesStep } from './fixed-expenses-step'
 import { createClient } from '@/lib/supabase/client'
-import {
-  isSavingsTargetRateColumnMissing,
-  persistSavingsTargetRate,
-  resolveSavingsTargetRate,
-} from '@/lib/savings-target'
 import { calculateTakeHome, DEFAULT_CATEGORIES } from '@/lib/types'
-import type { Profile, BudgetCategory, FixedExpense } from '@/lib/types'
 
 interface OnboardingFlowProps {
   onComplete: () => void
-  initialProfile?: Profile | null
-  initialCategories?: BudgetCategory[]
-  initialFixedExpenses?: FixedExpense[]
 }
 
-export function OnboardingFlow({ onComplete, initialProfile, initialCategories = [], initialFixedExpenses = [] }: OnboardingFlowProps) {
+export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-
-  // Prefill from existing profile/data when available
-  const prefillGross = Number(initialProfile?.gross_income ?? 0)
-  const prefillEpf = Number(initialProfile?.epf_rate ?? 11)
-  const prefillTakeHome = prefillGross > 0
-    ? calculateTakeHome(prefillGross, prefillEpf).takeHome
-    : 0
-  const prefillSavingsRate = resolveSavingsTargetRate(initialProfile?.savings_target_rate)
-  const prefillFixedExpenses = initialFixedExpenses.map(e => ({ name: e.name, amount: Number(e.amount) }))
-  const prefillCategories = DEFAULT_CATEGORIES.map(c => {
-    const existing = initialCategories.find(ec => ec.name === c.name)
-    return { ...c, budget: existing ? Number(existing.budget_amount) : 0 }
-  })
-
   const [data, setData] = useState({
-    grossIncome: prefillGross,
-    epfRate: prefillEpf,
-    takeHome: prefillTakeHome,
-    categories: prefillCategories,
-    fixedExpenses: prefillFixedExpenses,
-    savingsRate: prefillSavingsRate,
+    grossIncome: 0,
+    epfRate: 11,
+    takeHome: 0,
+    categories: DEFAULT_CATEGORIES.map(c => ({ ...c, budget: 0 })),
+    fixedExpenses: [] as { name: string; amount: number }[],
   })
 
   const handleSalaryComplete = (grossIncome: number, epfRate: number) => {
@@ -53,17 +29,13 @@ export function OnboardingFlow({ onComplete, initialProfile, initialCategories =
     setStep(1)
   }
 
-  const handleFixedComplete = (
-    fixedExpenses: { name: string; amount: number }[],
-    savingsRate: number
-  ) => {
-    setData(prev => ({ ...prev, fixedExpenses, savingsRate }))
+  const handleBudgetComplete = (categories: { name: string; budget: number; icon: string; color: string }[]) => {
+    setData(prev => ({ ...prev, categories }))
     setStep(2)
   }
 
-  const handleBudgetComplete = async (categories: { name: string; budget: number; icon: string; color: string }[]) => {
+  const handleFixedComplete = async (fixedExpenses: { name: string; amount: number }[]) => {
     setIsSubmitting(true)
-    setSubmitError(null)
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -71,45 +43,24 @@ export function OnboardingFlow({ onComplete, initialProfile, initialCategories =
       if (!user) throw new Error('Not authenticated')
 
       const deductions = calculateTakeHome(data.grossIncome, data.epfRate)
-      const updatedAt = new Date().toISOString()
-      persistSavingsTargetRate(data.savingsRate)
 
-      // Upsert profile — handles both missing rows and existing rows
-      const profilePayload = {
-        id: user.id,
-        gross_income: data.grossIncome,
-        epf_rate: data.epfRate,
-        socso_amount: deductions.socso,
-        eis_amount: deductions.eis,
-        pcb_amount: deductions.pcb,
-        take_home_salary: deductions.takeHome,
-        onboarding_completed: true,
-        updated_at: updatedAt,
-      }
-
-      const { error: profileError } = await supabase
+      // Update profile
+      await supabase
         .from('profiles')
-        .upsert({
-          ...profilePayload,
-          savings_target_rate: data.savingsRate,
+        .update({
+          gross_income: data.grossIncome,
+          epf_rate: data.epfRate,
+          socso_amount: deductions.socso,
+          eis_amount: deductions.eis,
+          pcb_amount: deductions.pcb,
+          take_home_salary: deductions.takeHome,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
         })
+        .eq('id', user.id)
 
-      if (profileError) {
-        if (isSavingsTargetRateColumnMissing(profileError)) {
-          const { error: fallbackProfileError } = await supabase
-            .from('profiles')
-            .upsert(profilePayload)
-
-          if (fallbackProfileError) throw fallbackProfileError
-        } else {
-          throw profileError
-        }
-      }
-
-      // Clear and reinsert variable categories (safe for both first-time and re-run)
-      await supabase.from('budget_categories').delete().eq('user_id', user.id).eq('is_fixed', false)
-
-      const categoriesToInsert = categories
+      // Insert categories
+      const categoriesToInsert = data.categories
         .filter(c => c.budget > 0)
         .map(c => ({
           user_id: user.id,
@@ -121,31 +72,22 @@ export function OnboardingFlow({ onComplete, initialProfile, initialCategories =
         }))
 
       if (categoriesToInsert.length > 0) {
-        const { error: catError } = await supabase.from('budget_categories').insert(categoriesToInsert)
-        if (catError) throw catError
+        await supabase.from('budget_categories').insert(categoriesToInsert)
       }
 
-      // Clear and reinsert fixed expenses
-      await supabase.from('fixed_expenses').delete().eq('user_id', user.id)
-
-      if (data.fixedExpenses.length > 0) {
-        const fixedToInsert = data.fixedExpenses.map(f => ({
+      // Insert fixed expenses
+      if (fixedExpenses.length > 0) {
+        const fixedToInsert = fixedExpenses.map(f => ({
           user_id: user.id,
           name: f.name,
           amount: f.amount,
         }))
-        const { error: fixedError } = await supabase.from('fixed_expenses').insert(fixedToInsert)
-        if (fixedError) throw fixedError
+        await supabase.from('fixed_expenses').insert(fixedToInsert)
       }
 
       onComplete()
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : (error as { message?: string })?.message ?? JSON.stringify(error)
-      console.error('Onboarding error:', message, error)
-      setSubmitError(message || 'Something went wrong. Please try again.')
+      console.error('Onboarding error:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -158,22 +100,16 @@ export function OnboardingFlow({ onComplete, initialProfile, initialCategories =
       initialGross={data.grossIncome}
       initialEpfRate={data.epfRate}
     />,
-    <FixedExpensesStep 
-      key="fixed" 
-      takeHome={data.takeHome}
-      initialExpenses={data.fixedExpenses}
-      initialSavingsRate={data.savingsRate}
-      onNext={handleFixedComplete}
-      onBack={() => setStep(0)}
-      isSubmitting={false}
-    />,
     <BudgetStep 
-      key="budget-final" 
+      key="budget" 
       takeHome={data.takeHome}
-      fixedExpensesTotal={data.fixedExpenses.reduce((sum, expense) => sum + expense.amount, 0)}
-      savingsRate={data.savingsRate}
       categories={data.categories}
       onNext={handleBudgetComplete}
+      onBack={() => setStep(0)}
+    />,
+    <FixedExpensesStep 
+      key="fixed" 
+      onNext={handleFixedComplete}
       onBack={() => setStep(1)}
       isSubmitting={isSubmitting}
     />,
@@ -196,12 +132,18 @@ export function OnboardingFlow({ onComplete, initialProfile, initialCategories =
       </div>
 
       {/* Step content */}
-      <div key={step} className="flex-1 flex flex-col">
-        {submitError && (
-          <p className="mx-6 mt-2 text-sm text-destructive">{submitError}</p>
-        )}
-        {steps[step]}
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          className="flex-1 flex flex-col"
+        >
+          {steps[step]}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

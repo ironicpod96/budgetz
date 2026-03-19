@@ -4,28 +4,20 @@ import { useState, useEffect } from 'react'
 import { BudgetProvider } from '@/lib/budget-context'
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow'
 import { Dashboard } from '@/components/dashboard/dashboard'
-import type { Profile, BudgetCategory, FixedExpense } from '@/lib/types'
+import type { Profile } from '@/lib/types'
 import { mutate } from 'swr'
 
 interface BudgetAppProps {
   initialProfile: Profile | null
-  initialCategories?: BudgetCategory[]
-  initialFixedExpenses?: FixedExpense[]
 }
 
-// Consider setup complete if onboarding_completed flag is set OR if salary data already exists
-function isSetupComplete(profile: Profile | null): boolean {
-  if (!profile) return false
-  return profile.onboarding_completed || (profile.gross_income != null && profile.gross_income > 0)
-}
-
-export function BudgetApp({ initialProfile, initialCategories = [], initialFixedExpenses = [] }: BudgetAppProps) {
+export function BudgetApp({ initialProfile }: BudgetAppProps) {
   const [showOnboarding, setShowOnboarding] = useState(
-    !isSetupComplete(initialProfile)
+    !initialProfile?.onboarding_completed
   )
 
   useEffect(() => {
-    if (!isSetupComplete(initialProfile)) {
+    if (initialProfile && !initialProfile.onboarding_completed) {
       setShowOnboarding(true)
     }
   }, [initialProfile])
@@ -38,14 +30,7 @@ export function BudgetApp({ initialProfile, initialCategories = [], initialFixed
   }
 
   if (showOnboarding) {
-    return (
-      <OnboardingFlow
-        onComplete={handleOnboardingComplete}
-        initialProfile={initialProfile}
-        initialCategories={initialCategories}
-        initialFixedExpenses={initialFixedExpenses}
-      />
-    )
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />
   }
 
   return (

@@ -11,25 +11,12 @@ export default async function Home() {
     redirect('/auth/login')
   }
 
-  // One-time rename: Entertainment → Fun
-  await supabase
-    .from('budget_categories')
-    .update({ name: 'Fun' })
-    .eq('user_id', user.id)
-    .eq('name', 'Entertainment')
+  // Get profile to check onboarding status
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
-  // Fetch profile, categories and fixed expenses in parallel
-  const [{ data: profile }, { data: categories }, { data: fixedExpenses }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('budget_categories').select('*').eq('user_id', user.id).order('name'),
-    supabase.from('fixed_expenses').select('*').eq('user_id', user.id).order('name'),
-  ])
-
-  return (
-    <BudgetApp
-      initialProfile={profile}
-      initialCategories={categories ?? []}
-      initialFixedExpenses={fixedExpenses ?? []}
-    />
-  )
+  return <BudgetApp initialProfile={profile} />
 }

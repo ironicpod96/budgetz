@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   eis_amount DECIMAL(10,2) DEFAULT 0,
   pcb_amount DECIMAL(10,2) DEFAULT 0,
   take_home_salary DECIMAL(12,2),
-  savings_target_rate DECIMAL(5,2) DEFAULT 20.00,
   onboarding_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

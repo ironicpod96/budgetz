@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { CategoryLabel } from '@/components/category-label'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { formatCurrency } from '@/lib/types'
 import { ChevronRight, ChevronLeft, Upload, Sparkles } from 'lucide-react'
+import { CategoryIcon } from '@/components/category-icon'
 
 interface Category {
   name: string
@@ -16,35 +16,19 @@ interface Category {
 
 interface BudgetStepProps {
   takeHome: number
-  fixedExpensesTotal: number
-  savingsRate: number
   categories: Category[]
   onNext: (categories: Category[]) => void
   onBack: () => void
-  isSubmitting?: boolean
 }
 
-export function BudgetStep({
-  takeHome,
-  fixedExpensesTotal,
-  savingsRate,
-  categories: initialCategories,
-  onNext,
-  onBack,
-  isSubmitting = false,
-}: BudgetStepProps) {
+export function BudgetStep({ takeHome, categories: initialCategories, onNext, onBack }: BudgetStepProps) {
   const [categories, setCategories] = useState<Category[]>(initialCategories)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [analysisError, setAnalysisError] = useState<string>('')
-  const [analysisSuccess, setAnalysisSuccess] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const savingsTargetAmount = Math.max((takeHome * savingsRate) / 100, 0)
-  const totalCommitments = fixedExpensesTotal + savingsTargetAmount
-  const allocatableAmount = Math.max(takeHome - totalCommitments, 0)
   const totalBudgeted = categories.reduce((sum, c) => sum + c.budget, 0)
-  const remaining = allocatableAmount - totalBudgeted
+  const remaining = takeHome - totalBudgeted
 
   const updateBudget = (index: number, value: string) => {
     const budget = parseFloat(value) || 0
@@ -59,8 +43,6 @@ export function BudgetStep({
     const file = e.target.files?.[0]
     if (!file) return
     
-    setAnalysisError('')
-    setAnalysisSuccess('')
     setSelectedFile(file)
   }
 
@@ -68,15 +50,10 @@ export function BudgetStep({
     if (!selectedFile) return
     
     setIsAnalyzing(true)
-    setAnalysisError('')
-    setAnalysisSuccess('')
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('takeHome', takeHome.toString())
-      formData.append('fixedCommitments', totalCommitments.toString())
-      formData.append('savingsTarget', savingsTargetAmount.toString())
-      formData.append('allocatable', allocatableAmount.toString())
       formData.append('categories', JSON.stringify(categories.map(c => c.name)))
 
       const response = await fetch('/api/analyze-statement', {
@@ -84,34 +61,20 @@ export function BudgetStep({
         body: formData,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        setAnalysisError(result.error || 'Failed to analyze statement. Please try again.')
-        return
+      if (response.ok) {
+        const result = await response.json()
+        if (result.suggestions) {
+          setCategories(prev => prev.map(cat => {
+            const suggestion = result.suggestions.find(
+              (s: { category: string; amount: number }) => 
+                s.category.toLowerCase() === cat.name.toLowerCase()
+            )
+            return suggestion ? { ...cat, budget: suggestion.amount } : cat
+          }))
+        }
       }
-
-      if (!result.suggestions || !Array.isArray(result.suggestions)) {
-        setAnalysisError('No suggestions returned from AI. Please try another file.')
-        return
-      }
-
-      setCategories(prev => prev.map(cat => {
-        const suggestion = result.suggestions.find(
-          (s: { category: string; amount: number }) =>
-            s.category.toLowerCase() === cat.name.toLowerCase()
-        )
-        return suggestion ? { ...cat, budget: suggestion.amount } : cat
-      }))
-
-      const diagnostics = result.diagnostics
-      const diagnosticsText = diagnostics
-        ? ` (${diagnostics.source === 'ollama' ? 'Ollama' : 'Rule-based'} · parsed ${diagnostics.parsedExpenseLines} expense lines · matched ${diagnostics.matchedCategoryLines})`
-        : ''
-      setAnalysisSuccess(`Suggestions applied.${diagnosticsText}${result.insights ? ` ${result.insights}` : ''}`)
     } catch (error) {
       console.error('Analysis error:', error)
-      setAnalysisError('Unable to analyze statement. Please try again.')
     } finally {
       setIsAnalyzing(false)
     }
@@ -136,7 +99,7 @@ export function BudgetStep({
           Set your budgets
         </h1>
         <p className="text-muted-foreground mb-6">
-          Take-home: <span className="text-primary font-semibold">{formatCurrency(takeHome)}</span> · Fixed expenses: <span className="text-foreground font-semibold">{formatCurrency(fixedExpensesTotal)}</span> · Savings target ({savingsRate}%): <span className="text-foreground font-semibold">{formatCurrency(savingsTargetAmount)}</span> · Available for allocation: <span className="text-primary font-semibold">{formatCurrency(allocatableAmount)}</span>
+          Allocate your take-home salary of <span className="text-primary font-semibold">{formatCurrency(takeHome)}</span> to categories.
         </p>
 
         {/* AI Analysis Button */}
@@ -187,12 +150,6 @@ export function BudgetStep({
                   </>
                 )}
               </Button>
-              {analysisError && (
-                <p className="text-sm text-destructive">{analysisError}</p>
-              )}
-              {analysisSuccess && (
-                <p className="text-sm text-primary">{analysisSuccess}</p>
-              )}
             </div>
           )}
         </div>
@@ -200,30 +157,35 @@ export function BudgetStep({
         {/* Categories */}
         <div className="space-y-3 mb-6">
           {categories.map((category, index) => (
-            <div
+            <motion.div
               key={category.name}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
               className="bg-card rounded-xl p-4 border border-border flex items-center gap-4"
             >
-              <CategoryLabel
-                name={category.name}
-                icon={category.icon}
-                size="md"
-                colorClassName="text-foreground"
-                className="flex-1"
-              />
-              <InputGroup className="w-24">
-                <InputGroupAddon>
-                  <InputGroupText>RM</InputGroupText>
-                </InputGroupAddon>
-                <InputGroupInput
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${category.color}20` }}
+              >
+                <CategoryIcon name={category.icon} color={category.color} />
+              </div>
+              <div className="flex-1">
+                <span className="text-foreground font-medium">{category.name}</span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  RM
+                </span>
+                <input
                   type="number"
                   value={category.budget || ''}
                   onChange={e => updateBudget(index, e.target.value)}
                   placeholder="0"
-                  className="text-right font-medium"
+                  className="w-24 bg-secondary text-foreground text-right font-medium rounded-lg px-3 py-2 pl-10 border-0 focus:ring-1 focus:ring-primary outline-none"
                 />
-              </InputGroup>
-            </div>
+              </div>
+            </motion.div>
           ))}
         </div>
 
@@ -245,15 +207,10 @@ export function BudgetStep({
       {/* Continue Button */}
       <Button
         onClick={handleSubmit}
-        disabled={isSubmitting}
-        className="w-full h-14 text-lg font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 mt-6 disabled:opacity-50"
+        className="w-full h-14 text-lg font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 mt-6"
       >
-        {isSubmitting ? 'Setting up...' : (
-          <>
-            Complete Setup
-            <ChevronRight className="ml-2 h-5 w-5" />
-          </>
-        )}
+        Continue
+        <ChevronRight className="ml-2 h-5 w-5" />
       </Button>
     </div>
   )

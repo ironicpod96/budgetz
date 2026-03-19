@@ -94,9 +94,6 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     
     if (!user) throw new Error('Not authenticated')
 
-    const now = new Date()
-    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-
     const { error } = await supabase
       .from('transactions')
       .insert({
@@ -104,7 +101,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         category_id: data.categoryId,
         amount: data.amount,
         name: data.name || null,
-        transaction_date: localDate,
+        transaction_date: new Date().toISOString().split('T')[0],
       })
 
     if (error) throw error
