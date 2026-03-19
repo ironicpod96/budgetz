@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Apple-style dark theme based on screenshot */
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1A1918;
+  --card-foreground: #FFFFFF;
+  --popover: #1C1C1E;
+  --popover-foreground: #FFFFFF;
+  --primary: #FFFFFF;
+  --primary-foreground: #000000;
+  --secondary: #2C2C2E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #3A3A3C;
+  --muted-foreground: #8E8E93;
+  --accent: #2C2C2E;
+  --accent-foreground: #FFFFFF;
+  --destructive: #FF3B30;
+  --destructive-foreground: #FFFFFF;
+  --border: #3A3A3C;
+  --input: #2C2C2E;
+  --ring: #FFFFFF;
+  --chart-1: #FFFFFF;
+  --chart-2: #FF3B30;
+  --chart-3: #5E5CE6;
+  --chart-4: #FF9F0A;
+  --chart-5: #BF5AF2;
+  --category-ring-base: #636366;
+  --radius: 1rem;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1A1918;
+  --card-foreground: #FFFFFF;
+  --popover: #1C1C1E;
+  --popover-foreground: #FFFFFF;
+  --primary: #FFFFFF;
+  --primary-foreground: #000000;
+  --secondary: #2C2C2E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #3A3A3C;
+  --muted-foreground: #8E8E93;
+  --accent: #2C2C2E;
+  --accent-foreground: #FFFFFF;
+  --destructive: #FF3B30;
+  --destructive-foreground: #FFFFFF;
+  --border: #3A3A3C;
+  --input: #2C2C2E;
+  --ring: #FFFFFF;
+  --chart-1: #FFFFFF;
+  --chart-2: #FF3B30;
+  --chart-3: #5E5CE6;
+  --chart-4: #FF9F0A;
+  --chart-5: #BF5AF2;
+  --category-ring-base: #636366;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-category-ring-base: var(--category-ring-base);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3A3A3C;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #48484A;
+}
+
+/* Smooth animations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Number input without spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled),
+  a,
+  [role='button'],
+  [data-slot='select-trigger'],
+  [data-slot='dialog-close'],
+  [data-slot='context-menu-item'] {
+    cursor: pointer;
+  }
+
+  [data-slot='context-menu-trigger'] {
+    cursor: context-menu;
+  }
+}
